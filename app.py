@@ -121,7 +121,7 @@ if st.button("▶️ Compute"):
 st.markdown("---")
 st.subheader("📤 Publish Back to SuAVE")
 
-from . suave_uploader import upload_to_suave
+from suave_uploader import upload_to_suave
 
 auth_user = st.text_input("🔐 SuAVE Login:")
 auth_password = st.text_input("🔑 SuAVE Password:", type="password")
