@@ -160,6 +160,8 @@ if st.button("📦 Upload to SuAVE"):
 
 # ---- Return to Home button ----
 param_str = urlencode({k: v[0] if isinstance(v, list) else v for k, v in query_params.items()})
+launcher_url = "https://suave-launcher.streamlit.app"
+
 button_css = """
 <style>
 .back-button {
@@ -181,4 +183,4 @@ button_css = """
 </style>
 """
 st.markdown(button_css, unsafe_allow_html=True)
-st.markdown(f'<a href="/?{param_str}" class="back-button">⬅️ Return to Home</a>', unsafe_allow_html=True)
+st.markdown(f'<a href="{launcher_url}/?{param_str}" class="back-button">⬅️ Return to Home</a>', unsafe_allow_html=True)
