@@ -3,14 +3,16 @@ import pandas as pd
 import numpy as np
 import requests
 import io
+import sys
+import os
 from urllib.parse import urlencode, urlparse
 from datetime import datetime
 
 # ---- Page config ----
 st.set_page_config(page_title="Arithmetic Operations", layout="wide")
 
-import sys, os
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+from suave_uploader import upload_to_suave
 
 # ---- Read query params from URL ----
 query_params = st.query_params
@@ -34,20 +36,24 @@ with st.expander("⚙️ Diagnostics and Input Info", expanded=False):
         st.stop()
 
     parsed = urlparse(survey_url)
-    base_url = f"{parsed.scheme}://{parsed.netloc}/surveys/"
-    csv_url = base_url + csv_filename
+    csv_url = f"{parsed.scheme}://{parsed.netloc}/surveys/{csv_filename}"
     st.markdown(f"🔗 <span style='font-size: 0.85em;'>Trying URL: {csv_url}</span>", unsafe_allow_html=True)
 
+    @st.cache_data(show_spinner=False)
+    def load_csv(url):
+        r = requests.get(url, timeout=30)
+        r.raise_for_status()
+        d = pd.read_csv(io.StringIO(r.text))
+        d.columns = d.columns.str.strip()
+        return d
+
     try:
-        response = requests.get(csv_url)
-        response.raise_for_status()
-        df = pd.read_csv(io.StringIO(response.text))
+        df = load_csv(csv_url)
     except Exception as e:
         st.error(f"❌ Could not fetch CSV: {e}")
         st.stop()
 
     st.markdown("<span style='font-size: 0.9em;'>📋 Column Check</span>", unsafe_allow_html=True)
-    df.columns = df.columns.str.strip()
     st.write(df.columns.tolist())
     st.write(df.dtypes.head())
     st.write(df.head(2))
@@ -120,8 +126,6 @@ if st.button("▶️ Compute"):
 # ---- Upload to SuAVE ----
 st.markdown("---")
 st.subheader("📤 Publish Back to SuAVE")
-
-from suave_uploader import upload_to_suave
 
 auth_user = st.text_input("🔐 SuAVE Login:")
 auth_password = st.text_input("🔑 SuAVE Password:", type="password")
