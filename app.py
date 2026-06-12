@@ -14,6 +14,14 @@ st.set_page_config(page_title="Arithmetic Operations", layout="wide")
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from suave_uploader import upload_to_suave
 
+@st.cache_data(show_spinner="Loading survey data…")
+def load_csv(url):
+    r = requests.get(url, timeout=30)
+    r.raise_for_status()
+    d = pd.read_csv(io.StringIO(r.text))
+    d.columns = d.columns.str.strip()
+    return d
+
 # ---- Read query params from URL ----
 query_params = st.query_params
 user = query_params.get("user", None)
@@ -25,34 +33,25 @@ dzc_file = query_params.get("dzc", None)
 st.title("➕ Arithmetic Operations")
 st.markdown("**Create new derived variables using arithmetic formulas, and publish back to SuAVE.**")
 
+if not csv_filename or not survey_url:
+    st.error("❌ Missing CSV filename or survey URL. Use ?csv=...&surveyurl=... in the URL.")
+    st.stop()
+
+parsed  = urlparse(survey_url)
+csv_url = f"{parsed.scheme}://{parsed.netloc}/surveys/{csv_filename}"
+
+try:
+    df = load_csv(csv_url)
+except Exception as e:
+    st.error(f"❌ Could not fetch CSV: {e}")
+    st.stop()
+
 # ---- Collapsible diagnostics ----
 with st.expander("⚙️ Diagnostics and Input Info", expanded=False):
     st.markdown(f"🧪 <span style='font-size: 0.85em;'>**Streamlit version:** {st.__version__}</span>", unsafe_allow_html=True)
     st.markdown(f"👤 <span style='font-size: 0.85em;'>**User:** {user}</span>", unsafe_allow_html=True)
     st.markdown(f"📂 <span style='font-size: 0.85em;'>**CSV File:** {csv_filename}</span>", unsafe_allow_html=True)
-
-    if not csv_filename or not survey_url:
-        st.error("❌ Missing CSV filename or survey URL. Use ?csv=...&surveyurl=... in the URL.")
-        st.stop()
-
-    parsed = urlparse(survey_url)
-    csv_url = f"{parsed.scheme}://{parsed.netloc}/surveys/{csv_filename}"
-    st.markdown(f"🔗 <span style='font-size: 0.85em;'>Trying URL: {csv_url}</span>", unsafe_allow_html=True)
-
-    @st.cache_data(show_spinner=False)
-    def load_csv(url):
-        r = requests.get(url, timeout=30)
-        r.raise_for_status()
-        d = pd.read_csv(io.StringIO(r.text))
-        d.columns = d.columns.str.strip()
-        return d
-
-    try:
-        df = load_csv(csv_url)
-    except Exception as e:
-        st.error(f"❌ Could not fetch CSV: {e}")
-        st.stop()
-
+    st.markdown(f"🔗 <span style='font-size: 0.85em;'>URL: {csv_url}</span>", unsafe_allow_html=True)
     st.markdown("<span style='font-size: 0.9em;'>📋 Column Check</span>", unsafe_allow_html=True)
     st.write(df.columns.tolist())
     st.write(df.dtypes.head())
